@@ -151,17 +151,16 @@ fun LocationPickerDialog(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var location by remember { mutableStateOf(currentLocation) }
+    var locationText by remember { mutableStateOf(currentLocation) }
     var latStr by remember { mutableStateOf(currentLat?.toString() ?: "") }
     var lngStr by remember { mutableStateOf(currentLng?.toString() ?: "") }
-    var addressQuery by remember { mutableStateOf(currentLocation) }
     var addressLookupStatus by remember { mutableStateOf<String?>(null) }
     var isAddressLookupRunning by remember { mutableStateOf(false) }
     var coordinateValidationError by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(currentLocation) {
-        if (addressQuery.isBlank()) {
-            addressQuery = currentLocation
+        if (locationText.isBlank()) {
+            locationText = currentLocation
         }
     }
 
@@ -176,28 +175,21 @@ fun LocationPickerDialog(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    "Enter location name and coordinates (optional).",
+                    "Enter location and coordinates (optional).",
                     style = MaterialTheme.typography.bodySmall
                 )
                 OutlinedTextField(
-                    value = location,
-                    onValueChange = { location = it },
-                    label = { Text("Location Name (e.g., Home, Work)") },
+                    value = locationText,
+                    onValueChange = { locationText = it },
+                    label = { Text("Location") },
                     modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = addressQuery,
-                    onValueChange = { addressQuery = it },
-                    label = { Text("Find Address (OSM)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("e.g., 10 Downing Street, London") }
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(
                         onClick = {
-                            val query = addressQuery.trim()
+                            val query = locationText.trim()
                             if (query.isBlank()) {
-                                addressLookupStatus = "Enter an address to search."
+                                addressLookupStatus = "Enter a location to search."
                                 return@Button
                             }
 
@@ -210,7 +202,7 @@ fun LocationPickerDialog(
                                 }
                                 if (result != null) {
                                     // Keep user's search phrase as concise location label.
-                                    location = query
+                                    locationText = query
                                     latStr = result.latitude.toString()
                                     lngStr = result.longitude.toString()
                                     addressLookupStatus = "Address found: ${result.displayName}"
@@ -278,7 +270,7 @@ fun LocationPickerDialog(
                     color = MaterialTheme.colorScheme.secondary
                 )
                 Text(
-                    "Tip: Use Lookup for free address search or Open Map for manual map browsing.",
+                    "Tip: Use Lookup for free OpenStreetMap search or Open Map for manual map browsing.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.secondary
                 )
@@ -308,7 +300,7 @@ fun LocationPickerDialog(
                         return@Button
                     }
 
-                    onLocationSelected(location.trim(), lat, lng)
+                    onLocationSelected(locationText.trim(), lat, lng)
                 }
             ) {
                 Text("Save Location")

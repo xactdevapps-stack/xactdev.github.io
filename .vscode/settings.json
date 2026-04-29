@@ -14,6 +14,8 @@
     "New-Item": true,
     "Out-Null": true,
     "Copy-Item": true,
-    ".\\build-and-install.ps1": true
+    ".\\build-and-install.ps1": true,
+    ".\\install-to-phone.ps1": true,
+    "&": true
   }
 }
