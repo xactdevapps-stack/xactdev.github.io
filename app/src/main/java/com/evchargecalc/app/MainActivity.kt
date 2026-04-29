@@ -6,26 +6,39 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.evchargecalc.app.storage.AppStorage
 import com.evchargecalc.app.ui.screens.AppScreen
 import com.evchargecalc.app.ui.theme.EvTheme
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             val storage = remember { AppStorage(this) }
-            var vehicles by remember { mutableStateOf(storage.loadVehicles()) }
-            var chargers by remember { mutableStateOf(storage.loadChargers()) }
-            var themeMode by remember { mutableStateOf(storage.loadThemeMode()) }
-            var distanceUnit by remember { mutableStateOf(storage.loadDistanceUnit()) }
-            var currencyCode by remember { mutableStateOf(storage.loadCurrencyCode()) }
-            var chargeSessions by remember { mutableStateOf(storage.loadChargeSessions()) }
+            val scope = rememberCoroutineScope()
+            var vehicles by remember { mutableStateOf<List<com.evchargecalc.app.model.VehicleProfile>>(emptyList()) }
+            var chargers by remember { mutableStateOf<List<com.evchargecalc.app.model.ChargerProfile>>(emptyList()) }
+            var themeMode by remember { mutableStateOf(com.evchargecalc.app.model.ThemeMode.DARK) }
+            var distanceUnit by remember { mutableStateOf(com.evchargecalc.app.model.DistanceUnit.KM) }
+            var currencyCode by remember { mutableStateOf("GBP") }
+            var chargeSessions by remember { mutableStateOf<List<com.evchargecalc.app.model.ChargeSession>>(emptyList()) }
+
+            LaunchedEffect(storage) {
+                vehicles = storage.loadVehicles()
+                chargers = storage.loadChargers()
+                themeMode = storage.loadThemeMode()
+                distanceUnit = storage.loadDistanceUnit()
+                currencyCode = storage.loadCurrencyCode()
+                chargeSessions = storage.loadChargeSessions()
+            }
 
             EvTheme(mode = themeMode) {
                 Surface(
@@ -41,27 +54,42 @@ class MainActivity : ComponentActivity() {
                         currencyCode = currencyCode,
                         onVehiclesChanged = {
                             vehicles = it
-                            storage.saveVehicles(it)
+                            scope.launch { storage.saveVehicles(it) }
                         },
                         onChargersChanged = {
                             chargers = it
-                            storage.saveChargers(it)
+                            scope.launch { storage.saveChargers(it) }
                         },
                         onThemeModeChanged = {
                             themeMode = it
-                            storage.saveThemeMode(it)
+                            scope.launch { storage.saveThemeMode(it) }
                         },
                         onDistanceUnitChanged = {
                             distanceUnit = it
-                            storage.saveDistanceUnit(it)
+                            scope.launch { storage.saveDistanceUnit(it) }
                         },
                         onCurrencyCodeChanged = {
                             currencyCode = it
-                            storage.saveCurrencyCode(it)
+                            scope.launch { storage.saveCurrencyCode(it) }
                         },
                         onChargeSaved = { session ->
                             chargeSessions = (listOf(session) + chargeSessions).sortedByDescending { it.timestampMs }
-                            storage.saveChargeSessions(chargeSessions)
+                            scope.launch { storage.addChargeSession(session) }
+                        },
+                        onDeleteSession = { session ->
+                            // Handled in AppScreen via onChargeSessionsChanged
+                        },
+                        onDuplicateSession = { session ->
+                            // Pre-select the vehicle and charger for quick re-calculation
+                            val vehicle = vehicles.firstOrNull { it.id == session.vehicleId }
+                            val charger = chargers.firstOrNull { it.id == session.chargerId }
+                            if (vehicle != null && charger != null) {
+                                // The UI will select these for the calculator
+                            }
+                        },
+                        onChargeSessionsChanged = {
+                            chargeSessions = it
+                            scope.launch { storage.saveChargeSessions(it) }
                         }
                     )
                 }

@@ -10,6 +10,9 @@
   "window.restoreWindows": "all",
   "workbench.editor.restoreViewState": true,
   "chat.tools.terminal.autoApprove": {
-    ".\\gradlew.bat": true
+    ".\\gradlew.bat": true,
+    "New-Item": true,
+    "Out-Null": true,
+    "Copy-Item": true
   }
 }

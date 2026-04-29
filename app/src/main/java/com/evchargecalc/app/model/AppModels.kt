@@ -1,5 +1,8 @@
 package com.evchargecalc.app.model
 
+import androidx.room.Entity
+import androidx.room.Index
+import androidx.room.PrimaryKey
 import java.util.UUID
 
 enum class AppTab { CALCULATE, VEHICLES, CHARGERS, HISTORY, SETTINGS }
@@ -16,8 +19,9 @@ fun Double.kmToSelected(unit: DistanceUnit): Double =
 fun Double.selectedToKm(unit: DistanceUnit): Double =
     if (unit == DistanceUnit.MI) this * KM_PER_MILE else this
 
+@Entity(tableName = "charge_sessions", indices = [Index("timestampMs"), Index("currencyCode")])
 data class ChargeSession(
-    val id: String = UUID.randomUUID().toString(),
+    @PrimaryKey val id: String = UUID.randomUUID().toString(),
     val timestampMs: Long = System.currentTimeMillis(),
     val vehicleId: String,
     val vehicleName: String,
@@ -72,8 +76,9 @@ val knownManufacturers = listOf(
     "Other"
 )
 
+@Entity(tableName = "vehicle_profiles")
 data class VehicleProfile(
-    val id: String = UUID.randomUUID().toString(),
+    @PrimaryKey val id: String = UUID.randomUUID().toString(),
     val make: String,
     val model: String,
     val batteryCapacityKwh: Double,
@@ -82,11 +87,14 @@ data class VehicleProfile(
     val isDefault: Boolean = false
 )
 
+@Entity(tableName = "charger_profiles")
 data class ChargerProfile(
-    val id: String = UUID.randomUUID().toString(),
+    @PrimaryKey val id: String = UUID.randomUUID().toString(),
     val name: String,
     val location: String,
     val chargeRateKw: Double,
     val pricePerKwh: Double,
+    val latitude: Double? = null,  // For Maps integration
+    val longitude: Double? = null, // For Maps integration
     val isDefault: Boolean = false
 )

@@ -3,13 +3,11 @@ package com.evchargecalc.app.ui.screens
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -42,21 +40,28 @@ fun AppScreen(
     onThemeModeChanged: (ThemeMode) -> Unit,
     onDistanceUnitChanged: (DistanceUnit) -> Unit,
     onCurrencyCodeChanged: (String) -> Unit,
-    onChargeSaved: (ChargeSession) -> Unit
+    onChargeSaved: (ChargeSession) -> Unit,
+    onDeleteSession: (ChargeSession) -> Unit = {},
+    onDuplicateSession: (ChargeSession) -> Unit = {},
+    onChargeSessionsChanged: (List<ChargeSession>) -> Unit = {}
 ) {
     var tab by remember { mutableStateOf(AppTab.CALCULATE) }
     var selectedVehicleId by remember { mutableStateOf(vehicles.firstOrNull { it.isDefault }?.id) }
     var selectedChargerId by remember { mutableStateOf(chargers.firstOrNull { it.isDefault }?.id) }
 
     LaunchedEffect(vehicles) {
-        if (selectedVehicleId != null && vehicles.none { it.id == selectedVehicleId }) {
-            selectedVehicleId = vehicles.firstOrNull { it.isDefault }?.id
+        if (vehicles.isEmpty()) {
+            selectedVehicleId = null
+        } else if (selectedVehicleId == null || vehicles.none { it.id == selectedVehicleId }) {
+            selectedVehicleId = vehicles.firstOrNull { it.isDefault }?.id ?: vehicles.first().id
         }
     }
 
     LaunchedEffect(chargers) {
-        if (selectedChargerId != null && chargers.none { it.id == selectedChargerId }) {
-            selectedChargerId = chargers.firstOrNull { it.isDefault }?.id
+        if (chargers.isEmpty()) {
+            selectedChargerId = null
+        } else if (selectedChargerId == null || chargers.none { it.id == selectedChargerId }) {
+            selectedChargerId = chargers.firstOrNull { it.isDefault }?.id ?: chargers.first().id
         }
     }
 
@@ -72,24 +77,23 @@ fun AppScreen(
                 .padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                AppTab.entries.forEachIndexed { index, entry ->
-                    SegmentedButton(
-                        shape = SegmentedButtonDefaults.itemShape(index, AppTab.entries.size),
-                        onClick = { tab = entry },
+            ScrollableTabRow(selectedTabIndex = AppTab.entries.indexOf(tab)) {
+                AppTab.entries.forEach { entry ->
+                    Tab(
                         selected = tab == entry,
-                        icon = {}
-                    ) {
-                        Text(
-                            text = when (entry) {
-                                AppTab.CALCULATE -> "CALC"
-                                AppTab.VEHICLES -> "VEHICLES"
-                                AppTab.CHARGERS -> "CHARGERS"
-                                AppTab.HISTORY -> "HISTORY"
-                                AppTab.SETTINGS -> "SETTINGS"
-                            }
-                        )
-                    }
+                        onClick = { tab = entry },
+                        text = {
+                            Text(
+                                text = when (entry) {
+                                    AppTab.CALCULATE -> "CALC"
+                                    AppTab.VEHICLES -> "VEHICLES"
+                                    AppTab.CHARGERS -> "CHARGERS"
+                                    AppTab.HISTORY -> "HISTORY"
+                                    AppTab.SETTINGS -> "SETTINGS"
+                                }
+                            )
+                        }
+                    )
                 }
             }
 
@@ -124,7 +128,11 @@ fun AppScreen(
 
                 AppTab.HISTORY -> HistoryScreen(
                     chargeSessions = chargeSessions,
-                    currencyCode = currencyCode
+                    currencyCode = currencyCode,
+                    onDeleteSession = { session ->
+                        onChargeSessionsChanged(chargeSessions.filterNot { it.id == session.id })
+                    },
+                    onDuplicateSession = onDuplicateSession
                 )
 
                 AppTab.SETTINGS -> SettingsScreen(

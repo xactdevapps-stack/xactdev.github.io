@@ -6,11 +6,22 @@ import java.util.Locale
 
 data class CurrencyOption(val code: String, val label: String)
 
+private val currencyLocalesByCode: Map<String, Locale> by lazy {
+    val map = mutableMapOf<String, Locale>()
+    Locale.getAvailableLocales().forEach { locale ->
+        val code = runCatching { Currency.getInstance(locale).currencyCode }.getOrNull()
+        if (code != null && !map.containsKey(code)) {
+            map[code] = locale
+        }
+    }
+    map
+}
+
 fun allCurrencyOptions(): List<CurrencyOption> {
     return Currency.getAvailableCurrencies()
         .map { currency ->
             val symbol = runCatching {
-                currency.getSymbol(localeForCurrency(currency.currencyCode))
+                currency.getSymbol(localeForCurrencyCode(currency.currencyCode))
             }.getOrDefault(currency.currencyCode)
             CurrencyOption(currency.currencyCode, "${currency.currencyCode} - ${currency.displayName} ($symbol)")
         }
@@ -18,16 +29,12 @@ fun allCurrencyOptions(): List<CurrencyOption> {
 }
 
 fun formatCurrencyAmount(amount: Double, currencyCode: String): String {
-    val locale = localeForCurrency(currencyCode)
+    val locale = localeForCurrencyCode(currencyCode)
     val formatter = NumberFormat.getCurrencyInstance(locale)
     formatter.currency = Currency.getInstance(currencyCode)
     return formatter.format(amount)
 }
 
-private fun localeForCurrency(currencyCode: String): Locale {
-    val target = Currency.getInstance(currencyCode)
-    val match = Locale.getAvailableLocales().firstOrNull { locale ->
-        runCatching { Currency.getInstance(locale) }.getOrNull() == target
-    }
-    return match ?: Locale.UK
+private fun localeForCurrencyCode(currencyCode: String): Locale {
+    return currencyLocalesByCode[currencyCode] ?: Locale.UK
 }

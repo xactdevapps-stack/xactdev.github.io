@@ -114,12 +114,14 @@ fun CalculatorScreen(
                     NumberField(
                         label = "Battery Capacity (kWh)",
                         value = adhocBattery,
-                        onValueChange = { adhocBattery = it }
+                        onValueChange = { adhocBattery = it },
+                        example = "60"
                     )
                     NumberField(
                         label = "Estimated Full Range ($rangeUnitLabel)",
                         value = adhocRange,
-                        onValueChange = { adhocRange = it }
+                        onValueChange = { adhocRange = it },
+                        example = "420"
                     )
                 }
             }
@@ -146,12 +148,14 @@ fun CalculatorScreen(
                     NumberField(
                         label = "Charge Rate (kW)",
                         value = adhocRate,
-                        onValueChange = { adhocRate = it }
+                        onValueChange = { adhocRate = it },
+                        example = "7.4"
                     )
                     NumberField(
                         label = "Price per kWh",
                         value = adhocPrice,
-                        onValueChange = { adhocPrice = it }
+                        onValueChange = { adhocPrice = it },
+                        example = "0.34"
                     )
                 }
             }

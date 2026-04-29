@@ -18,12 +18,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.evchargecalc.app.model.DistanceUnit
 import com.evchargecalc.app.model.VehicleProfile
 import com.evchargecalc.app.model.kmToSelected
 import com.evchargecalc.app.model.knownManufacturers
 import com.evchargecalc.app.model.selectedToKm
+import com.evchargecalc.app.ui.components.ConfirmationDialog
+import com.evchargecalc.app.ui.components.EmptyStateCard
 import com.evchargecalc.app.ui.components.NumberField
 import com.evchargecalc.app.ui.components.SelectionDropdown
 import com.evchargecalc.app.ui.components.TechCard
@@ -44,7 +47,17 @@ fun VehiclesScreen(
     var battery by remember { mutableStateOf("") }
     var target by remember { mutableStateOf("80") }
     var range by remember { mutableStateOf("") }
+    var deleteConfirmVehicleId by remember { mutableStateOf<String?>(null) }
+
     val rangeUnitLabel = if (distanceUnit == DistanceUnit.MI) "mi" else "km"
+    val validationMessage = when {
+        (if (selectedMake == "Other") customMake.trim() else selectedMake.trim()).isBlank() -> "Select a manufacturer or enter a custom make."
+        model.isBlank() -> "Enter a model name."
+        battery.toDoubleOrNull() == null || battery.toDoubleOrNull()!! <= 0.0 -> "Enter a battery capacity greater than zero."
+        target.toIntOrNull() == null || target.toIntOrNull() !in 1..100 -> "Default charge target must be between 1 and 100."
+        range.toDoubleOrNull() == null || range.toDoubleOrNull()!! <= 0.0 -> "Enter a full-range estimate greater than zero."
+        else -> null
+    }
 
     fun resetForm() {
         editingId = null
@@ -54,6 +67,25 @@ fun VehiclesScreen(
         battery = ""
         target = "80"
         range = ""
+    }
+
+    if (deleteConfirmVehicleId != null) {
+        val vehicleToDelete = vehicles.firstOrNull { it.id == deleteConfirmVehicleId }
+        vehicleToDelete?.let {
+            ConfirmationDialog(
+                title = "Delete Vehicle?",
+                message = "Are you sure you want to delete '${it.make} ${it.model}'? This action cannot be undone.",
+                confirmText = "Delete",
+                onConfirm = {
+                    onVehiclesChanged(vehicles.filterNot { v -> v.id == deleteConfirmVehicleId })
+                    if (selectedVehicleId == deleteConfirmVehicleId) {
+                        onSelectVehicle(null)
+                    }
+                    deleteConfirmVehicleId = null
+                },
+                onDismiss = { deleteConfirmVehicleId = null }
+            )
+        }
     }
 
     LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -72,7 +104,9 @@ fun VehiclesScreen(
                         value = customMake,
                         onValueChange = { customMake = it },
                         label = { Text("Custom Make") },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("vehicle_custom_make")
                     )
                 }
                 Spacer(Modifier.height(8.dp))
@@ -80,25 +114,42 @@ fun VehiclesScreen(
                     value = model,
                     onValueChange = { model = it },
                     label = { Text("Model") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("vehicle_model"),
+                    placeholder = { Text("e.g., Model 3, i4, Leaf") }
                 )
                 Spacer(Modifier.height(8.dp))
                 NumberField(
                     label = "Battery Capacity (kWh)",
                     value = battery,
-                    onValueChange = { battery = it }
+                    onValueChange = { battery = it },
+                    example = "75",
+                    modifier = Modifier.testTag("vehicle_battery")
                 )
                 NumberField(
                     label = "Default Charge Target (%)",
                     value = target,
-                    onValueChange = { target = it }
+                    onValueChange = { target = it },
+                    example = "80",
+                    modifier = Modifier.testTag("vehicle_target")
                 )
                 NumberField(
                     label = "Estimated Full Range ($rangeUnitLabel)",
                     value = range,
-                    onValueChange = { range = it }
+                    onValueChange = { range = it },
+                    example = if (distanceUnit == DistanceUnit.MI) "250" else "400",
+                    modifier = Modifier.testTag("vehicle_range")
                 )
                 Spacer(Modifier.height(8.dp))
+                if (validationMessage != null) {
+                    Text(
+                        validationMessage,
+                        color = MaterialTheme.colorScheme.secondary,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    Spacer(Modifier.height(8.dp))
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = {
                         val makeValue = if (selectedMake == "Other") customMake.trim() else selectedMake.trim()
@@ -136,7 +187,7 @@ fun VehiclesScreen(
                             )
                         }
                         resetForm()
-                    }) {
+                    }, enabled = validationMessage == null, modifier = Modifier.testTag("vehicle_save")) {
                         Text(if (editingId == null) "Save Vehicle" else "Update Vehicle")
                     }
                     if (editingId != null) {
@@ -153,55 +204,60 @@ fun VehiclesScreen(
             }
         }
 
-        items(vehicles, key = { it.id }) { vehicle ->
-            TechCard(title = "${vehicle.make} ${vehicle.model}") {
-                Text("Battery: ${format1(vehicle.batteryCapacityKwh)} kWh")
-                Text("Default Target: ${vehicle.defaultTargetPercent}%")
-                Text("Range @100%: ${format1(vehicle.estimatedRangeKm.kmToSelected(distanceUnit))} $rangeUnitLabel")
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Button(onClick = { onSelectVehicle(vehicle.id) }) {
-                        Text(if (selectedVehicleId == vehicle.id) "Selected" else "Use")
-                    }
-                    Button(onClick = {
-                        onVehiclesChanged(vehicles.map { it.copy(isDefault = it.id == vehicle.id) })
-                        onSelectVehicle(vehicle.id)
-                    }) {
-                        Text(if (vehicle.isDefault) "Default" else "Set Default")
-                    }
-                    Button(onClick = {
-                        editingId = vehicle.id
-                        if (knownManufacturers.contains(vehicle.make)) {
-                            selectedMake = vehicle.make
-                            customMake = ""
-                        } else {
-                            selectedMake = "Other"
-                            customMake = vehicle.make
-                        }
-                        model = vehicle.model
-                        battery = vehicle.batteryCapacityKwh.toString()
-                        target = vehicle.defaultTargetPercent.toString()
-                        range = vehicle.estimatedRangeKm.kmToSelected(distanceUnit).toString()
-                    }) {
-                        Text("Edit")
-                    }
-                    Button(
-                        onClick = {
-                            onVehiclesChanged(vehicles.filterNot { it.id == vehicle.id })
-                            if (selectedVehicleId == vehicle.id) {
-                                onSelectVehicle(null)
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.secondary
-                        )
+        if (vehicles.isEmpty()) {
+            item {
+                EmptyStateCard(
+                    title = "No Vehicles",
+                    message = "Create a vehicle profile to save battery specs and estimated range. You can add multiple vehicles for quick calculator reference and track different charge profiles."
+                )
+            }
+        } else {
+            items(vehicles, key = { it.id }) { vehicle ->
+                TechCard(title = "${vehicle.make} ${vehicle.model}") {
+                    Text("Battery: ${format1(vehicle.batteryCapacityKwh)} kWh")
+                    Text("Default Target: ${vehicle.defaultTargetPercent}%")
+                    Text("Range @100%: ${format1(vehicle.estimatedRangeKm.kmToSelected(distanceUnit))} $rangeUnitLabel")
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Delete")
+                        Button(onClick = { onSelectVehicle(vehicle.id) }) {
+                            Text(if (selectedVehicleId == vehicle.id) "Selected" else "Use")
+                        }
+                        Button(onClick = {
+                            onVehiclesChanged(vehicles.map { it.copy(isDefault = it.id == vehicle.id) })
+                            onSelectVehicle(vehicle.id)
+                        }) {
+                            Text(if (vehicle.isDefault) "Default" else "Set Default")
+                        }
+                        Button(onClick = {
+                            editingId = vehicle.id
+                            if (knownManufacturers.contains(vehicle.make)) {
+                                selectedMake = vehicle.make
+                                customMake = ""
+                            } else {
+                                selectedMake = "Other"
+                                customMake = vehicle.make
+                            }
+                            model = vehicle.model
+                            battery = vehicle.batteryCapacityKwh.toString()
+                            target = vehicle.defaultTargetPercent.toString()
+                            range = vehicle.estimatedRangeKm.kmToSelected(distanceUnit).toString()
+                        }) {
+                            Text("Edit")
+                        }
+                        Button(
+                            onClick = { deleteConfirmVehicleId = vehicle.id },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.secondary
+                            )
+                        ) {
+                            Text("Delete")
+                        }
                     }
                 }
             }
         }
     }
 }
+

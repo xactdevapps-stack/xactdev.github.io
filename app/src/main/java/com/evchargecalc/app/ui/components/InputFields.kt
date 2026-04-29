@@ -8,12 +8,17 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -24,14 +29,35 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun NumberField(label: String, value: String, onValueChange: (String) -> Unit) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = { raw -> onValueChange(raw.filter { it.isDigit() || it == '.' }) },
-        label = { Text(label) },
-        modifier = Modifier.fillMaxWidth(),
-        singleLine = true
-    )
+fun NumberField(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    example: String? = null
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Text(label, style = MaterialTheme.typography.labelMedium)
+            if (example != null) {
+                Text(
+                    "e.g., $example",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.secondary
+                )
+            }
+        }
+        OutlinedTextField(
+            value = value,
+            onValueChange = { raw -> onValueChange(raw.filter { it.isDigit() || it == '.' }) },
+            label = { Text(label) },
+            modifier = modifier.fillMaxWidth(),
+            singleLine = true
+        )
+    }
 }
 
 @Composable
@@ -78,7 +104,11 @@ fun SelectionDropdown(
                 Text("v", color = MaterialTheme.colorScheme.primary)
             }
 
-            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+                modifier = Modifier.heightIn(max = 360.dp)
+            ) {
                 if (includeNoneOption) {
                     DropdownMenuItem(
                         text = { Text(noneLabel) },
@@ -100,4 +130,69 @@ fun SelectionDropdown(
             }
         }
     }
+}
+
+@Composable
+fun SelectionField(title: String, selectedText: String, onClick: () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(title, style = MaterialTheme.typography.bodySmall)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.background)
+                .border(1.dp, MaterialTheme.colorScheme.outline, MaterialTheme.shapes.small)
+                .clickable(onClick = onClick)
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(selectedText, modifier = Modifier.weight(1f))
+            Text("Search", color = MaterialTheme.colorScheme.primary)
+        }
+    }
+}
+
+@Composable
+fun SearchableSelectionDialog(
+    title: String,
+    options: List<Pair<String, String>>,
+    onDismiss: () -> Unit,
+    onSelect: (String) -> Unit
+) {
+    var query by remember { mutableStateOf("") }
+    val filtered = remember(query, options) {
+        if (query.isBlank()) {
+            options
+        } else {
+            options.filter { (_, label) -> label.contains(query, ignoreCase = true) }
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Close")
+            }
+        },
+        title = { Text(title) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    label = { Text("Search currencies") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                LazyColumn(modifier = Modifier.heightIn(max = 320.dp)) {
+                    items(filtered, key = { it.first }) { (id, label) ->
+                        DropdownMenuItem(
+                            text = { Text(label) },
+                            onClick = { onSelect(id) }
+                        )
+                    }
+                }
+            }
+        }
+    )
 }
