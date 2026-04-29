@@ -263,10 +263,7 @@ fun VehiclesScreen(
                     Text("Default Target: ${vehicle.defaultTargetPercent}%")
                     Text("Range @100%: ${format1(vehicle.estimatedRangeKm.kmToSelected(distanceUnit))} $rangeUnitLabel")
                     Text("History Color: ${colorLabel(vehicle.chartColorHex)}")
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                         Button(onClick = { onSelectVehicle(vehicle.id) }) {
                             Text(if (selectedVehicleId == vehicle.id) "Selected" else "Use")
                         }
@@ -276,6 +273,8 @@ fun VehiclesScreen(
                         }) {
                             Text(if (vehicle.isDefault) "Default" else "Set Default")
                         }
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                         Button(onClick = {
                             editingId = vehicle.id
                             if (knownManufacturers.contains(vehicle.make)) {

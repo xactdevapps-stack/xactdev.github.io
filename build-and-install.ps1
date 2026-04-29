@@ -130,8 +130,12 @@ Write-Host "[OK] APK installed" -ForegroundColor Green
 
 # Step 5: Launch app
 Write-Host "`n[5/5] Launching app..." -ForegroundColor Yellow
-& $adbPath -s $deviceSerial shell am start -n com.evchargecalc.app/.MainActivity
-if ($LASTEXITCODE -ne 0) {
+$launchOutput = (& $adbPath -s $deviceSerial shell am start -n com.evchargecalc.app/.MainActivity | Out-String)
+$hasLaunchErrorText = $launchOutput -match "Error type|does not exist"
+if ($LASTEXITCODE -ne 0 -or $hasLaunchErrorText) {
+    if ($launchOutput) {
+        Write-Host $launchOutput.Trim() -ForegroundColor Red
+    }
     Write-Host "Failed to launch app" -ForegroundColor Red
     exit 1
 }

@@ -30,6 +30,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -64,6 +65,9 @@ import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.math.max
 
 private const val ALL_NETWORKS = "All Networks"
@@ -295,6 +299,8 @@ private fun csvEscape(value: String): String {
     return "\"$escaped\""
 }
 
+private fun csvNumber(value: Double): String = String.format(Locale.US, "%.6f", value)
+
 private fun estimateNetworkName(session: ChargeSession, chargers: List<ChargerProfile>): String {
     if (session.chargerNetwork.isNotBlank()) return session.chargerNetwork
     return chargers.firstOrNull { it.id == session.chargerId }?.networkName.orEmpty()
@@ -350,14 +356,14 @@ private fun buildHistoryCsv(
             csvEscape(estimateNetworkName(session, chargers)),
             csvEscape(session.chargerLocation),
             csvEscape(session.sessionTag),
-            format2(session.energyKwh),
-            format2(session.timeHours),
-            format2(session.costAmount),
+            csvNumber(session.energyKwh),
+            csvNumber(session.timeHours),
+            csvNumber(session.costAmount),
             csvEscape(session.currencyCode),
-            distanceKm?.let { format2(it) } ?: "",
-            distanceSelected?.let { format2(it) } ?: "",
-            effPer100Km?.let { format2(it) } ?: "",
-            effDistancePerKwh?.let { format2(it) } ?: "",
+            distanceKm?.let { csvNumber(it) } ?: "",
+            distanceSelected?.let { csvNumber(it) } ?: "",
+            effPer100Km?.let { csvNumber(it) } ?: "",
+            effDistancePerKwh?.let { csvNumber(it) } ?: "",
             csvEscape(session.notes)
         ).joinToString(",")
     }
@@ -390,6 +396,7 @@ fun HistoryScreen(
     onDuplicateSession: (ChargeSession) -> Unit = {}
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var period by remember { mutableStateOf(PeriodFilter.ALL) }
     var metric by remember { mutableStateOf(ChartMetric.COST) }
     var deleteConfirmSessionId by remember { mutableStateOf<String?>(null) }
@@ -603,8 +610,16 @@ fun HistoryScreen(
                                 Button(
                                     onClick = {
                                         val timestamp = SimpleDateFormat("yyyyMMdd_HHmm", Locale.getDefault()).format(Date())
-                                        pendingCsvContent = buildHistoryCsv(filtered, chargers, distanceUnit)
-                                        exportLauncher.launch("ev_charge_history_$timestamp.csv")
+                                        pendingCsvContent = ""
+                                        exportNotice = "Preparing CSV export..."
+                                        scope.launch {
+                                            val csv = withContext(Dispatchers.Default) {
+                                                buildHistoryCsv(filtered, chargers, distanceUnit)
+                                            }
+                                            pendingCsvContent = csv
+                                            exportNotice = null
+                                            exportLauncher.launch("ev_charge_history_$timestamp.csv")
+                                        }
                                     },
                                     modifier = Modifier.weight(1f)
                                 ) {

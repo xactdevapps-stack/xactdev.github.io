@@ -246,10 +246,7 @@ fun ChargersScreen(
                     }
                     Text("Rate: ${format2(charger.chargeRateKw)} kW")
                     Text("Price: ${formatCurrencyAmount(charger.pricePerKwh, currencyCode)} / kWh")
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                         Button(onClick = { onSelectCharger(charger.id) }) {
                             Text(if (selectedChargerId == charger.id) "Selected" else "Use")
                         }
@@ -272,6 +269,8 @@ fun ChargersScreen(
                                 Text("Maps")
                             }
                         }
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                         Button(onClick = {
                             editingId = charger.id
                             name = charger.name

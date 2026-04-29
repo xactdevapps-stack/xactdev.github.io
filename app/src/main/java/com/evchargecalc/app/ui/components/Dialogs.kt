@@ -22,14 +22,81 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.evchargecalc.app.model.MapsUtils
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import java.net.HttpURLConnection
+import java.net.URL
+import java.net.URLEncoder
+
+private data class GeocodeMatch(
+    val displayName: String,
+    val latitude: Double,
+    val longitude: Double
+)
+
+private fun sanitizeSignedDecimalInput(raw: String): String {
+    val kept = raw.filter { it.isDigit() || it == '.' || it == '-' || it == '+' }
+    if (kept.isEmpty()) return ""
+
+    val sign = if (kept.first() == '-' || kept.first() == '+') kept.first().toString() else ""
+    val body = kept
+        .removePrefix("-")
+        .removePrefix("+")
+        .replace("-", "")
+        .replace("+", "")
+
+    val dotIndex = body.indexOf('.')
+    val normalizedBody = if (dotIndex >= 0) {
+        body.substring(0, dotIndex + 1) + body.substring(dotIndex + 1).replace(".", "")
+    } else {
+        body
+    }
+
+    return sign + normalizedBody
+}
+
+private fun lookupAddressWithNominatim(query: String, userAgent: String): GeocodeMatch? {
+    val encoded = URLEncoder.encode(query, Charsets.UTF_8.name())
+    val endpoint = "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=$encoded"
+    val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
+        requestMethod = "GET"
+        connectTimeout = 8000
+        readTimeout = 8000
+        setRequestProperty("User-Agent", userAgent)
+        setRequestProperty("Accept", "application/json")
+    }
+
+    return try {
+        runCatching {
+            if (connection.responseCode != HttpURLConnection.HTTP_OK) return@runCatching null
+            val response = connection.inputStream.bufferedReader().use { it.readText() }
+            val items = JSONArray(response)
+            if (items.length() == 0) return@runCatching null
+            val first = items.getJSONObject(0)
+            GeocodeMatch(
+                displayName = first.optString("display_name", query),
+                latitude = first.getString("lat").toDouble(),
+                longitude = first.getString("lon").toDouble()
+            )
+        }.getOrNull()
+    } finally {
+        connection.disconnect()
+    }
+}
 
 /**
  * Confirmation dialog for destructive actions
@@ -82,9 +149,21 @@ fun LocationPickerDialog(
     onLocationSelected: (location: String, lat: Double?, lng: Double?) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var location by remember { mutableStateOf(currentLocation) }
     var latStr by remember { mutableStateOf(currentLat?.toString() ?: "") }
     var lngStr by remember { mutableStateOf(currentLng?.toString() ?: "") }
+    var addressQuery by remember { mutableStateOf(currentLocation) }
+    var addressLookupStatus by remember { mutableStateOf<String?>(null) }
+    var isAddressLookupRunning by remember { mutableStateOf(false) }
+    var coordinateValidationError by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(currentLocation) {
+        if (addressQuery.isBlank()) {
+            addressQuery = currentLocation
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -106,6 +185,63 @@ fun LocationPickerDialog(
                     label = { Text("Location Name (e.g., Home, Work)") },
                     modifier = Modifier.fillMaxWidth()
                 )
+                OutlinedTextField(
+                    value = addressQuery,
+                    onValueChange = { addressQuery = it },
+                    label = { Text("Find Address (OSM)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("e.g., 10 Downing Street, London") }
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = {
+                            val query = addressQuery.trim()
+                            if (query.isBlank()) {
+                                addressLookupStatus = "Enter an address to search."
+                                return@Button
+                            }
+
+                            isAddressLookupRunning = true
+                            addressLookupStatus = "Looking up address..."
+                            scope.launch {
+                                val userAgent = "EVChargeCalc/1.0 (${context.packageName})"
+                                val result = withContext(Dispatchers.IO) {
+                                    lookupAddressWithNominatim(query, userAgent)
+                                }
+                                if (result != null) {
+                                    // Keep user's search phrase as concise location label.
+                                    location = query
+                                    latStr = result.latitude.toString()
+                                    lngStr = result.longitude.toString()
+                                    addressLookupStatus = "Address found: ${result.displayName}"
+                                } else {
+                                    addressLookupStatus = "No match found. Try a more specific address."
+                                }
+                                isAddressLookupRunning = false
+                            }
+                        },
+                        enabled = !isAddressLookupRunning
+                    ) {
+                        Text(if (isAddressLookupRunning) "Searching..." else "Lookup")
+                    }
+                    Button(onClick = { MapsUtils.openMapsForLocationPicking(context) }) {
+                        Text("Open Map")
+                    }
+                }
+                if (addressLookupStatus != null) {
+                    Text(
+                        text = addressLookupStatus!!,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.secondary
+                    )
+                }
+                if (coordinateValidationError != null) {
+                    Text(
+                        text = coordinateValidationError!!,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.secondary
+                    )
+                }
                 Text(
                     "GPS Coordinates (optional - for map directions):",
                     style = MaterialTheme.typography.labelSmall
@@ -122,22 +258,27 @@ fun LocationPickerDialog(
                 ) {
                     OutlinedTextField(
                         value = latStr,
-                        onValueChange = { latStr = it },
+                        onValueChange = { latStr = sanitizeSignedDecimalInput(it) },
                         label = { Text("Latitude") },
                         modifier = Modifier.weight(1f),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text)
                     )
                     Spacer(Modifier.width(4.dp))
                     OutlinedTextField(
                         value = lngStr,
-                        onValueChange = { lngStr = it },
+                        onValueChange = { lngStr = sanitizeSignedDecimalInput(it) },
                         label = { Text("Longitude") },
                         modifier = Modifier.weight(1f),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text)
                     )
                 }
                 Text(
-                    "Tip: Use the Maps button to open the selected location in your browser",
+                    "Tip: Negative values are valid (e.g., latitude -37.8136, longitude 144.9631).",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.secondary
+                )
+                Text(
+                    "Tip: Use Lookup for free address search or Open Map for manual map browsing.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.secondary
                 )
@@ -148,6 +289,25 @@ fun LocationPickerDialog(
                 onClick = {
                     val lat = latStr.toDoubleOrNull()
                     val lng = lngStr.toDoubleOrNull()
+                    coordinateValidationError = null
+
+                    if (latStr.isNotBlank() && lat == null) {
+                        coordinateValidationError = "Latitude must be a valid number."
+                        return@Button
+                    }
+                    if (lngStr.isNotBlank() && lng == null) {
+                        coordinateValidationError = "Longitude must be a valid number."
+                        return@Button
+                    }
+                    if (lat != null && lat !in -90.0..90.0) {
+                        coordinateValidationError = "Latitude must be between -90 and 90."
+                        return@Button
+                    }
+                    if (lng != null && lng !in -180.0..180.0) {
+                        coordinateValidationError = "Longitude must be between -180 and 180."
+                        return@Button
+                    }
+
                     onLocationSelected(location.trim(), lat, lng)
                 }
             ) {
