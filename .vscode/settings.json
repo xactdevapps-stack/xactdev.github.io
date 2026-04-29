@@ -1,0 +1,15 @@
+{
+  "github.copilot.enable": {
+    "*": true,
+    "plaintext": true,
+    "markdown": true,
+    "scminput": true
+  },
+  "chat.commandCenter.enabled": true,
+  "window.autoDetectColorScheme": true,
+  "window.restoreWindows": "all",
+  "workbench.editor.restoreViewState": true,
+  "chat.tools.terminal.autoApprove": {
+    ".\\gradlew.bat": true
+  }
+}
