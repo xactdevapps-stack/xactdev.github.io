@@ -36,4 +36,27 @@ class ChargeMathTest {
 
         assertEquals(45.0, energy, 0.001)
     }
+
+    @Test
+    fun appliesOptionalEfficiencyWhenEnabled() {
+        val batteryKwh = 60.0
+        val fromPercent = 20.0
+        val toPercent = 80.0
+        val efficiencyPercent = 90.0
+
+        val batteryEnergy = batteryKwh * ((toPercent - fromPercent) / 100.0)
+        val gridEnergy = batteryEnergy / (efficiencyPercent / 100.0)
+
+        assertEquals(40.0, gridEnergy, 0.001)
+    }
+
+    @Test
+    fun convertsTargetRangeToPercent() {
+        val fullRangeKm = 500.0
+        val targetRangeKm = 300.0
+
+        val targetPercent = (targetRangeKm / fullRangeKm) * 100.0
+
+        assertEquals(60.0, targetPercent, 0.001)
+    }
 }

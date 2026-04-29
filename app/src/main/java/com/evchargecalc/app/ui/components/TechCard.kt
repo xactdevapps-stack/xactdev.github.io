@@ -12,14 +12,20 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun TechCard(title: String, content: @Composable () -> Unit) {
+fun TechCard(
+    title: String,
+    titleColor: Color = MaterialTheme.colorScheme.primary,
+    accentColor: Color = MaterialTheme.colorScheme.outline,
+    content: @Composable () -> Unit
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, MaterialTheme.colorScheme.outline, MaterialTheme.shapes.medium),
+            .border(1.dp, accentColor, MaterialTheme.shapes.medium),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(
@@ -29,9 +35,9 @@ fun TechCard(title: String, content: @Composable () -> Unit) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary
+                color = titleColor
             )
-            HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+            HorizontalDivider(color = accentColor)
             content()
         }
     }

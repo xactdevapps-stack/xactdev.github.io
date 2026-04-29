@@ -72,7 +72,7 @@ fun ConfirmationDialog(
 
 /**
  * Location picker dialog with manual lat/long input
- * Note: Google Maps picker intent support can be added here later
+ * Note: Coordinates can be used with any map provider
  */
 @Composable
 fun LocationPickerDialog(
@@ -107,7 +107,7 @@ fun LocationPickerDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
                 Text(
-                    "GPS Coordinates (optional - for Google Maps directions):",
+                    "GPS Coordinates (optional - for map directions):",
                     style = MaterialTheme.typography.labelSmall
                 )
                 Row(
@@ -137,7 +137,7 @@ fun LocationPickerDialog(
                     )
                 }
                 Text(
-                    "Tip: Tap 'Pick from Maps' button to use Google Maps picker",
+                    "Tip: Use the Maps button to open the selected location in your browser",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.secondary
                 )

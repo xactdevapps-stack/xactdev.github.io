@@ -76,9 +76,6 @@ class MainActivity : ComponentActivity() {
                             chargeSessions = (listOf(session) + chargeSessions).sortedByDescending { it.timestampMs }
                             scope.launch { storage.addChargeSession(session) }
                         },
-                        onDeleteSession = { session ->
-                            // Handled in AppScreen via onChargeSessionsChanged
-                        },
                         onDuplicateSession = { session ->
                             // Pre-select the vehicle and charger for quick re-calculation
                             val vehicle = vehicles.firstOrNull { it.id == session.vehicleId }

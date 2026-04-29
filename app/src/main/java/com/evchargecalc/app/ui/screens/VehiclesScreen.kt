@@ -1,12 +1,16 @@
 package com.evchargecalc.app.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
@@ -18,13 +22,18 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import com.evchargecalc.app.model.DEFAULT_VEHICLE_CHART_COLOR
 import com.evchargecalc.app.model.DistanceUnit
 import com.evchargecalc.app.model.VehicleProfile
+import com.evchargecalc.app.model.VehicleChartColorOption
 import com.evchargecalc.app.model.kmToSelected
 import com.evchargecalc.app.model.knownManufacturers
+import com.evchargecalc.app.model.parseHexColor
 import com.evchargecalc.app.model.selectedToKm
+import com.evchargecalc.app.model.vehicleChartColorOptions
 import com.evchargecalc.app.ui.components.ConfirmationDialog
 import com.evchargecalc.app.ui.components.EmptyStateCard
 import com.evchargecalc.app.ui.components.NumberField
@@ -47,6 +56,7 @@ fun VehiclesScreen(
     var battery by remember { mutableStateOf("") }
     var target by remember { mutableStateOf("80") }
     var range by remember { mutableStateOf("") }
+    var selectedChartColorHex by remember { mutableStateOf(DEFAULT_VEHICLE_CHART_COLOR) }
     var deleteConfirmVehicleId by remember { mutableStateOf<String?>(null) }
 
     val rangeUnitLabel = if (distanceUnit == DistanceUnit.MI) "mi" else "km"
@@ -59,6 +69,10 @@ fun VehiclesScreen(
         else -> null
     }
 
+    fun colorLabel(hex: String): String {
+        return vehicleChartColorOptions.firstOrNull { it.hex == hex }?.label ?: hex
+    }
+
     fun resetForm() {
         editingId = null
         selectedMake = "Tesla"
@@ -67,6 +81,7 @@ fun VehiclesScreen(
         battery = ""
         target = "80"
         range = ""
+        selectedChartColorHex = DEFAULT_VEHICLE_CHART_COLOR
     }
 
     if (deleteConfirmVehicleId != null) {
@@ -142,6 +157,25 @@ fun VehiclesScreen(
                     modifier = Modifier.testTag("vehicle_range")
                 )
                 Spacer(Modifier.height(8.dp))
+                SelectionDropdown(
+                    title = "History Color",
+                    selectedText = colorLabel(selectedChartColorHex),
+                    options = vehicleChartColorOptions.map { option -> option.hex to option.label },
+                    onSelect = { selected -> if (selected != null) selectedChartColorHex = selected },
+                    includeNoneOption = false
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .size(18.dp)
+                            .background(parseHexColor(selectedChartColorHex), CircleShape)
+                    )
+                    Text(
+                        text = "Used for history charts and session cards",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
                 if (validationMessage != null) {
                     Text(
                         validationMessage,
@@ -166,7 +200,8 @@ fun VehiclesScreen(
                                     model = model.trim(),
                                     batteryCapacityKwh = batteryValue,
                                     defaultTargetPercent = targetValue,
-                                    estimatedRangeKm = rangeKmValue
+                                    estimatedRangeKm = rangeKmValue,
+                                    chartColorHex = selectedChartColorHex
                                 )
                             )
                         } else {
@@ -178,7 +213,8 @@ fun VehiclesScreen(
                                             model = model.trim(),
                                             batteryCapacityKwh = batteryValue,
                                             defaultTargetPercent = targetValue,
-                                            estimatedRangeKm = rangeKmValue
+                                            estimatedRangeKm = rangeKmValue,
+                                            chartColorHex = selectedChartColorHex
                                         )
                                     } else {
                                         it
@@ -213,10 +249,16 @@ fun VehiclesScreen(
             }
         } else {
             items(vehicles, key = { it.id }) { vehicle ->
-                TechCard(title = "${vehicle.make} ${vehicle.model}") {
+                val vehicleColor = parseHexColor(vehicle.chartColorHex)
+                TechCard(
+                    title = "${vehicle.make} ${vehicle.model}",
+                    titleColor = vehicleColor,
+                    accentColor = vehicleColor
+                ) {
                     Text("Battery: ${format1(vehicle.batteryCapacityKwh)} kWh")
                     Text("Default Target: ${vehicle.defaultTargetPercent}%")
                     Text("Range @100%: ${format1(vehicle.estimatedRangeKm.kmToSelected(distanceUnit))} $rangeUnitLabel")
+                    Text("History Color: ${colorLabel(vehicle.chartColorHex)}")
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.fillMaxWidth()
@@ -243,6 +285,7 @@ fun VehiclesScreen(
                             battery = vehicle.batteryCapacityKwh.toString()
                             target = vehicle.defaultTargetPercent.toString()
                             range = vehicle.estimatedRangeKm.kmToSelected(distanceUnit).toString()
+                            selectedChartColorHex = vehicle.chartColorHex
                         }) {
                             Text("Edit")
                         }

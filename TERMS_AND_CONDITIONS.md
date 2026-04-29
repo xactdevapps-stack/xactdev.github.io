@@ -47,6 +47,12 @@ Unless otherwise stated, this app is distributed under the MIT License.
 
 See LICENSE for details.
 
+## Third-Party Maps
+
+The optional Maps feature opens an external OpenStreetMap web page in your browser. Use of that service is subject to third-party terms and policies outside this app.
+
+Map data attribution: © OpenStreetMap contributors.
+
 ## Limitation of Liability
 
 To the maximum extent permitted by law, EV Charge Calc and its developer are not liable for any loss, damage, or claim arising from use of the app or reliance on its estimated outputs.

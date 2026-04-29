@@ -41,7 +41,6 @@ fun AppScreen(
     onDistanceUnitChanged: (DistanceUnit) -> Unit,
     onCurrencyCodeChanged: (String) -> Unit,
     onChargeSaved: (ChargeSession) -> Unit,
-    onDeleteSession: (ChargeSession) -> Unit = {},
     onDuplicateSession: (ChargeSession) -> Unit = {},
     onChargeSessionsChanged: (List<ChargeSession>) -> Unit = {}
 ) {
@@ -127,6 +126,9 @@ fun AppScreen(
                 )
 
                 AppTab.HISTORY -> HistoryScreen(
+                    vehicles = vehicles,
+                    chargers = chargers,
+                    distanceUnit = distanceUnit,
                     chargeSessions = chargeSessions,
                     currencyCode = currencyCode,
                     onDeleteSession = { session ->

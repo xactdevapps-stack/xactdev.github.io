@@ -23,5 +23,5 @@ val defaultAboutMetadata = AboutMetadata(
     privacyPolicyUrl = "See repository file: PRIVACY_POLICY.md",
     termsUrl = "See repository file: TERMS_AND_CONDITIONS.md",
     licenseName = "MIT",
-    acknowledgements = "Built with Kotlin, Jetpack Compose, and AndroidX."
+    acknowledgements = "Built with Kotlin, Jetpack Compose, and AndroidX. Map data © OpenStreetMap contributors."
 )

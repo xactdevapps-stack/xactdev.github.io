@@ -33,6 +33,10 @@ The app does not sell or share your personal data.
 
 At this time, EV Charge Calc does not use account systems, backend APIs, or server-side processing for user data.
 
+When you use the Maps action, the app opens OpenStreetMap in your device browser using the charger name/location (and coordinates if available). This request is handled by your browser and OpenStreetMap as a third-party service.
+
+OpenStreetMap Privacy Policy: https://wiki.osmfoundation.org/wiki/Privacy_Policy
+
 If this changes in a future version, this policy will be updated.
 
 ## Security

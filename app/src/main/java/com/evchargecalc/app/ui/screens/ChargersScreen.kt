@@ -42,6 +42,7 @@ fun ChargersScreen(
     var editingId by remember { mutableStateOf<String?>(null) }
     var name by remember { mutableStateOf("") }
     var location by remember { mutableStateOf("") }
+    var networkName by remember { mutableStateOf("") }
     var latitude by remember { mutableStateOf<Double?>(null) }
     var longitude by remember { mutableStateOf<Double?>(null) }
     var rate by remember { mutableStateOf("") }
@@ -61,6 +62,7 @@ fun ChargersScreen(
         editingId = null
         name = ""
         location = ""
+        networkName = ""
         latitude = null
         longitude = null
         rate = ""
@@ -125,6 +127,14 @@ fun ChargersScreen(
                     }
                 }
                 Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = networkName,
+                    onValueChange = { networkName = it },
+                    label = { Text("Network (optional)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("e.g., Pod Point, Tesla") }
+                )
+                Spacer(Modifier.height(8.dp))
                 NumberField(
                     label = "Charge Rate (kW)",
                     value = rate,
@@ -165,6 +175,7 @@ fun ChargersScreen(
                                 chargers + ChargerProfile(
                                     name = name.trim(),
                                     location = location.trim(),
+                                    networkName = networkName.trim(),
                                     chargeRateKw = rateValue,
                                     pricePerKwh = priceValue,
                                     latitude = latitude,
@@ -178,6 +189,7 @@ fun ChargersScreen(
                                         it.copy(
                                             name = name.trim(),
                                             location = location.trim(),
+                                            networkName = networkName.trim(),
                                             chargeRateKw = rateValue,
                                             pricePerKwh = priceValue,
                                             latitude = latitude,
@@ -218,6 +230,9 @@ fun ChargersScreen(
             items(chargers, key = { it.id }) { charger ->
                 TechCard(title = charger.name) {
                     Text("Location: ${charger.location}")
+                    if (charger.networkName.isNotBlank()) {
+                        Text("Network: ${charger.networkName}")
+                    }
                     if (charger.latitude != null && charger.longitude != null) {
                         Text(
                             "GPS: ${"%.4f".format(charger.latitude)}, ${"%.4f".format(charger.longitude)}",
@@ -257,6 +272,7 @@ fun ChargersScreen(
                             editingId = charger.id
                             name = charger.name
                             location = charger.location
+                            networkName = charger.networkName
                             latitude = charger.latitude
                             longitude = charger.longitude
                             rate = charger.chargeRateKw.toString()
