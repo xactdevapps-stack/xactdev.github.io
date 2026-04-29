@@ -7,8 +7,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -278,7 +282,10 @@ fun ChargersScreen(
                             rate = charger.chargeRateKw.toString()
                             price = charger.pricePerKwh.toString()
                         }) {
-                            Text("Edit")
+                            Icon(
+                                imageVector = Icons.Filled.Edit,
+                                contentDescription = "Edit charger"
+                            )
                         }
                         Button(
                             onClick = { deleteConfirmChargerId = charger.id },
@@ -286,7 +293,10 @@ fun ChargersScreen(
                                 containerColor = MaterialTheme.colorScheme.secondary
                             )
                         ) {
-                            Text("Delete")
+                            Icon(
+                                imageVector = Icons.Filled.Delete,
+                                contentDescription = "Delete charger"
+                            )
                         }
                     }
                 }

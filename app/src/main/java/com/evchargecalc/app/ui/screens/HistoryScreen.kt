@@ -15,9 +15,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -394,6 +397,10 @@ fun HistoryScreen(
     var typeFilter by remember { mutableStateOf(ALL_TAGS) }
     var exportNotice by remember { mutableStateOf<String?>(null) }
     var pendingCsvContent by remember { mutableStateOf("") }
+    val segmentedColors = SegmentedButtonDefaults.colors(
+        activeContainerColor = MaterialTheme.colorScheme.primary,
+        activeContentColor = MaterialTheme.colorScheme.onPrimary
+    )
 
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("text/csv")
@@ -513,6 +520,7 @@ fun HistoryScreen(
                             shape = SegmentedButtonDefaults.itemShape(index, PeriodFilter.entries.size),
                             selected = period == entry,
                             onClick = { period = entry },
+                            colors = segmentedColors,
                             icon = {}
                         ) {
                             Text(
@@ -534,6 +542,7 @@ fun HistoryScreen(
                             shape = SegmentedButtonDefaults.itemShape(index, ChartMetric.entries.size),
                             selected = metric == entry,
                             onClick = { metric = entry },
+                            colors = segmentedColors,
                             icon = {}
                         ) {
                             Text(
@@ -795,7 +804,10 @@ fun HistoryScreen(
                                 containerColor = MaterialTheme.colorScheme.secondary
                             )
                         ) {
-                            Text("Delete")
+                            Icon(
+                                imageVector = Icons.Filled.Delete,
+                                contentDescription = "Delete session"
+                            )
                         }
                     }
                 }

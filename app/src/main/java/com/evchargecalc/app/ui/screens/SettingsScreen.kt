@@ -40,6 +40,10 @@ fun SettingsScreen(
     val currencyOptions = remember(currencies) { currencies.map { it.code to it.label } }
     var showAbout by remember { mutableStateOf(false) }
     var showCurrencyPicker by remember { mutableStateOf(false) }
+    val segmentedColors = SegmentedButtonDefaults.colors(
+        activeContainerColor = MaterialTheme.colorScheme.primary,
+        activeContentColor = MaterialTheme.colorScheme.onPrimary
+    )
 
     LazyColumn {
         item {
@@ -52,6 +56,7 @@ fun SettingsScreen(
                             shape = SegmentedButtonDefaults.itemShape(index, ThemeMode.entries.size),
                             selected = themeMode == mode,
                             onClick = { onThemeModeChanged(mode) },
+                            colors = segmentedColors,
                             icon = {}
                         ) {
                             Text(mode.name)
@@ -92,6 +97,7 @@ fun SettingsScreen(
                             shape = SegmentedButtonDefaults.itemShape(index, DistanceUnit.entries.size),
                             selected = distanceUnit == unit,
                             onClick = { onDistanceUnitChanged(unit) },
+                            colors = segmentedColors,
                             icon = {}
                         ) {
                             Text(unit.name)

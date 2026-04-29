@@ -12,8 +12,8 @@ android {
         applicationId = "com.evchargecalc.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 8
-        versionName = "0.5.0"
+        versionCode = 9
+        versionName = "0.5.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -51,6 +51,7 @@ dependencies {
     implementation("androidx.datastore:datastore-preferences:1.1.1")
     implementation("androidx.compose.ui:ui:1.6.8")
     implementation("androidx.compose.material3:material3:1.2.1")
+    implementation("androidx.compose.material:material-icons-extended:1.6.8")
     implementation("androidx.compose.ui:ui-tooling-preview:1.6.8")
     implementation("androidx.room:room-ktx:2.6.1")
     implementation("androidx.room:room-runtime:2.6.1")

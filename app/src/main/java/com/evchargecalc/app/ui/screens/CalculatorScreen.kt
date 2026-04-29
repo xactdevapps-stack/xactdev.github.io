@@ -78,6 +78,10 @@ fun CalculatorScreen(
     var sessionTag by remember { mutableStateOf(chargeSessionTagOptions.first()) }
     var notes by remember { mutableStateOf("") }
     var distanceDrivenInput by remember { mutableStateOf("") }
+    val segmentedColors = SegmentedButtonDefaults.colors(
+        activeContainerColor = MaterialTheme.colorScheme.primary,
+        activeContentColor = MaterialTheme.colorScheme.onPrimary
+    )
 
     val rangeUnitLabel = if (distanceUnit == DistanceUnit.MI) "mi" else "km"
 
@@ -258,6 +262,7 @@ fun CalculatorScreen(
                             shape = SegmentedButtonDefaults.itemShape(index, ChargeInputMode.entries.size),
                             selected = chargeInputMode == mode,
                             onClick = { chargeInputMode = mode },
+                            colors = segmentedColors,
                             icon = {}
                         ) {
                             Text(if (mode == ChargeInputMode.PERCENT) "%" else "Target Range")
