@@ -49,13 +49,16 @@ interface ChargeSessionDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(items: List<ChargeSession>)
 
+    @Query("DELETE FROM charge_sessions WHERE id = :sessionId")
+    suspend fun deleteById(sessionId: String)
+
     @Query("DELETE FROM charge_sessions")
     suspend fun clearAll()
 }
 
 @Database(
     entities = [VehicleProfile::class, ChargerProfile::class, ChargeSession::class],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -95,6 +98,14 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_charge_sessions_vehicleId ON charge_sessions(vehicleId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_charge_sessions_chargerId ON charge_sessions(chargerId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_charge_sessions_sessionTag ON charge_sessions(sessionTag)")
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase {
             return instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
@@ -102,7 +113,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "ev_charge_calc.db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                     .build()
                     .also { instance = it }
             }

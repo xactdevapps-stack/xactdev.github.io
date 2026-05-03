@@ -25,6 +25,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.evchargecalc.app.model.ChargeSession
 import com.evchargecalc.app.model.ChargerProfile
@@ -62,6 +64,7 @@ fun CalculatorScreen(
 
     var useSavedVehicle by remember { mutableStateOf(selectedVehicle != null) }
     var useSavedCharger by remember { mutableStateOf(selectedCharger != null) }
+    var defaultsApplied by remember { mutableStateOf(false) }
 
     var adhocBattery by remember { mutableStateOf("60") }
     var adhocRange by remember { mutableStateOf(if (distanceUnit == DistanceUnit.MI) "260" else "420") }
@@ -71,9 +74,6 @@ fun CalculatorScreen(
     var chargeRange by remember { mutableStateOf(20f..80f) }
     var chargeInputMode by remember { mutableStateOf(ChargeInputMode.PERCENT) }
     var targetRangeInput by remember { mutableStateOf("") }
-
-    var efficiencyEnabled by remember { mutableStateOf(false) }
-    var efficiencyPercent by remember { mutableStateOf("90") }
 
     var sessionTag by remember { mutableStateOf(chargeSessionTagOptions.first()) }
     var notes by remember { mutableStateOf("") }
@@ -93,6 +93,14 @@ fun CalculatorScreen(
         }
     }
 
+    LaunchedEffect(selectedVehicleId, selectedChargerId) {
+        if (!defaultsApplied && (selectedVehicleId != null || selectedChargerId != null)) {
+            useSavedVehicle = selectedVehicleId != null
+            useSavedCharger = selectedChargerId != null
+            defaultsApplied = true
+        }
+    }
+
     val batteryKwh = if (useSavedVehicle) selectedVehicle?.batteryCapacityKwh else adhocBattery.toDoubleOrNull()
     val estimatedRangeKm = if (useSavedVehicle) {
         selectedVehicle?.estimatedRangeKm
@@ -107,12 +115,14 @@ fun CalculatorScreen(
     val deltaPercent = (toPercent - fromPercent).coerceAtLeast(0.0)
 
     val batteryEnergyNeeded = batteryKwh?.let { it * (deltaPercent / 100.0) }
-    val efficiencyRatio = efficiencyPercent.toDoubleOrNull()?.coerceIn(1.0, 100.0)?.div(100.0)
-    val energyNeeded = if (batteryEnergyNeeded != null) {
-        if (efficiencyEnabled && efficiencyRatio != null) batteryEnergyNeeded / efficiencyRatio else batteryEnergyNeeded
-    } else {
-        null
-    }
+    val energyNeeded = batteryEnergyNeeded
+    // Future option retained for potential reintroduction:
+    // val efficiencyRatio = efficiencyPercent.toDoubleOrNull()?.coerceIn(1.0, 100.0)?.div(100.0)
+    // val energyNeeded = if (batteryEnergyNeeded != null && efficiencyEnabled && efficiencyRatio != null) {
+    //     batteryEnergyNeeded / efficiencyRatio
+    // } else {
+    //     batteryEnergyNeeded
+    // }
 
     val chargeCost = if (energyNeeded != null && pricePerKwh != null) energyNeeded * pricePerKwh else null
     val hoursNeeded = if (energyNeeded != null && rateKw != null && rateKw > 0) energyNeeded / rateKw else null
@@ -174,40 +184,10 @@ fun CalculatorScreen(
         null
     }
 
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item {
-            TechCard(title = "Saved Vehicle") {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text("Use Saved Vehicle", modifier = Modifier.weight(1f))
-                    Switch(checked = useSavedVehicle, onCheckedChange = { useSavedVehicle = it })
-                }
-                if (useSavedVehicle) {
-                    ProfileDropdown(
-                        title = "Vehicle",
-                        selectedText = selectedVehicle?.let { "${it.make} ${it.model}" } ?: "Select vehicle",
-                        options = vehicles.map { it.id to "${it.make} ${it.model}" },
-                        onSelect = { onSelectedVehicleChanged(it) }
-                    )
-                } else {
-                    NumberField(
-                        label = "Battery Capacity (kWh)",
-                        value = adhocBattery,
-                        onValueChange = { adhocBattery = it },
-                        example = "60"
-                    )
-                    NumberField(
-                        label = "Estimated Full Range ($rangeUnitLabel)",
-                        value = adhocRange,
-                        onValueChange = { adhocRange = it },
-                        example = if (distanceUnit == DistanceUnit.MI) "260" else "420"
-                    )
-                }
-            }
-        }
-
+    LazyColumn(
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        modifier = Modifier.testTag("calculator_list")
+    ) {
         item {
             TechCard(title = "Saved Charger") {
                 Row(
@@ -237,6 +217,39 @@ fun CalculatorScreen(
                         value = adhocPrice,
                         onValueChange = { adhocPrice = it },
                         example = "0.34"
+                    )
+                }
+            }
+        }
+
+        item {
+            TechCard(title = "Saved Vehicle") {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text("Use Saved Vehicle", modifier = Modifier.weight(1f))
+                    Switch(checked = useSavedVehicle, onCheckedChange = { useSavedVehicle = it })
+                }
+                if (useSavedVehicle) {
+                    ProfileDropdown(
+                        title = "Vehicle",
+                        selectedText = selectedVehicle?.let { "${it.make} ${it.model}" } ?: "Select vehicle",
+                        options = vehicles.map { it.id to "${it.make} ${it.model}" },
+                        onSelect = { onSelectedVehicleChanged(it) }
+                    )
+                } else {
+                    NumberField(
+                        label = "Battery Capacity (kWh)",
+                        value = adhocBattery,
+                        onValueChange = { adhocBattery = it },
+                        example = "60"
+                    )
+                    NumberField(
+                        label = "Estimated Full Range ($rangeUnitLabel)",
+                        value = adhocRange,
+                        onValueChange = { adhocRange = it },
+                        example = if (distanceUnit == DistanceUnit.MI) "260" else "420"
                     )
                 }
             }
@@ -339,7 +352,7 @@ fun CalculatorScreen(
                     value = notes,
                     onValueChange = { notes = it },
                     label = { Text("Notes (optional)") },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
                     minLines = 2,
                     maxLines = 4
                 )
@@ -349,13 +362,6 @@ fun CalculatorScreen(
         item {
             TechCard(title = "Result") {
                 Text("Energy Needed: ${energyNeeded?.let { "${format2(it)} kWh" } ?: "Provide battery capacity"}")
-                if (efficiencyEnabled && batteryEnergyNeeded != null && efficiencyRatio != null) {
-                    Text(
-                        "Battery Energy (without losses): ${format2(batteryEnergyNeeded)} kWh",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.secondary
-                    )
-                }
                 Text(
                     "Estimated Cost: ${chargeCost?.let { formatCurrencyAmount(it, currencyCode) } ?: "Provide price per kWh"}"
                 )
@@ -377,29 +383,6 @@ fun CalculatorScreen(
                 if (distanceEfficiency != null) {
                     Text(
                         "Distance per kWh: ${format2(distanceEfficiency)} $rangeUnitLabel/kWh",
-                        color = MaterialTheme.colorScheme.secondary
-                    )
-                }
-
-                Spacer(Modifier.height(8.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Apply charging efficiency", modifier = Modifier.weight(1f))
-                    Switch(checked = efficiencyEnabled, onCheckedChange = { efficiencyEnabled = it })
-                }
-                if (efficiencyEnabled) {
-                    NumberField(
-                        label = "Efficiency (%)",
-                        value = efficiencyPercent,
-                        onValueChange = { efficiencyPercent = it },
-                        example = "90"
-                    )
-                    Text(
-                        "Optional: if empty/invalid, standard calculation is used.",
-                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.secondary
                     )
                 }

@@ -27,7 +27,16 @@ fun Double.kmToSelected(unit: DistanceUnit): Double =
 fun Double.selectedToKm(unit: DistanceUnit): Double =
     if (unit == DistanceUnit.MI) this * KM_PER_MILE else this
 
-@Entity(tableName = "charge_sessions", indices = [Index("timestampMs"), Index("currencyCode")])
+@Entity(
+    tableName = "charge_sessions",
+    indices = [
+        Index("timestampMs"),
+        Index("currencyCode"),
+        Index("vehicleId"),
+        Index("chargerId"),
+        Index("sessionTag")
+    ]
+)
 data class ChargeSession(
     @PrimaryKey val id: String = UUID.randomUUID().toString(),
     val timestampMs: Long = System.currentTimeMillis(),

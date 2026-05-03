@@ -24,7 +24,7 @@ fun AboutScreen() {
     TechCard(title = "About") {
         Image(
             painter = painterResource(id = R.drawable.about_banner),
-            contentDescription = "EV Charge Calc banner",
+            contentDescription = "Watt Tracker banner",
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(Modifier.height(12.dp))

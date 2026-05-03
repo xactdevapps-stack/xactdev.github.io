@@ -14,10 +14,10 @@ data class AboutMetadata(
 )
 
 val defaultAboutMetadata = AboutMetadata(
-    appName = "EV Charge Calc",
+    appName = "Watt Tracker",
     tagline = "Estimate EV charging cost, time, and range with profile-aware calculations.",
-    companyOrAuthor = "Col Dawe",
-    copyrightLine = "Col Dawe (2026)",
+    companyOrAuthor = "XactDev",
+    copyrightLine = "XactDev (2026)",
     supportEmail = "TBA",
     websiteUrl = "TBA",
     privacyPolicyUrl = "See repository file: PRIVACY_POLICY.md",

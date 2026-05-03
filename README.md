@@ -1,4 +1,4 @@
-# EV Charge Calc
+# Watt Tracker
 
 An Android app for estimating EV charging time, energy, cost, and range.
 
@@ -19,18 +19,30 @@ An Android app for estimating EV charging time, energy, cost, and range.
 - Build debug APK: `./gradlew.bat assembleDebug`
 - Unit tests: `./gradlew.bat testDebugUnitTest`
 - Instrumentation tests: `./gradlew.bat connectedDebugAndroidTest`
+- Stress + benchmark trend run: `./run-stress-test.ps1`
+
+## Stress Benchmark Outputs
+
+The stress script writes:
+
+- Per-run raw log: `build/reports/stress/stress-test-YYYYMMDD_HHMMSS.log`
+- Trend CSV history: `build/reports/stress/benchmark-history.csv`
+- Trend JSONL history: `build/reports/stress/benchmark-history.jsonl`
+
+Each run records generation/insert/read timings, memory markers, and warning flags,
+then prints deltas versus the previous run when available.
 
 ## Versioning
 
-- Current version name: 0.3.0
-- Current version code: 5
+- Current version name: 0.6.0-rc1
+- Current version code: 12
 
 Version values are defined in app/build.gradle.kts.
 
 ## About Metadata
 
-- Developer: Col Dawe
-- Copyright: Col Dawe (2026)
+- Developer: XactDev
+- Copyright: XactDev (2026)
 - Support email: TBA
 - Website: TBA
 - Privacy policy: PRIVACY_POLICY.md

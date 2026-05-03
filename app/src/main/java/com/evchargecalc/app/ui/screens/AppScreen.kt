@@ -33,16 +33,21 @@ fun AppScreen(
     chargers: List<ChargerProfile>,
     chargeSessions: List<ChargeSession>,
     themeMode: ThemeMode,
+    appAccentHex: String,
     distanceUnit: DistanceUnit,
     currencyCode: String,
     onVehiclesChanged: (List<VehicleProfile>) -> Unit,
     onChargersChanged: (List<ChargerProfile>) -> Unit,
     onThemeModeChanged: (ThemeMode) -> Unit,
+    onAppAccentHexChanged: (String) -> Unit,
     onDistanceUnitChanged: (DistanceUnit) -> Unit,
     onCurrencyCodeChanged: (String) -> Unit,
     onChargeSaved: (ChargeSession) -> Unit,
     onDuplicateSession: (ChargeSession) -> Unit = {},
-    onChargeSessionsChanged: (List<ChargeSession>) -> Unit = {}
+    onImportSessions: (List<ChargeSession>) -> Unit = {},
+    onUpdateSession: (ChargeSession) -> Unit = {},
+    onDeleteSession: (ChargeSession) -> Unit = {},
+    onClearAllSessions: () -> Unit = {}
 ) {
     var tab by remember { mutableStateOf(AppTab.CALCULATE) }
     var selectedVehicleId by remember { mutableStateOf(vehicles.firstOrNull { it.isDefault }?.id) }
@@ -66,15 +71,15 @@ fun AppScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("EV Charge Cost Calculator", letterSpacing = 1.4.sp) })
+            TopAppBar(title = { Text("Watt Tracker", letterSpacing = 1.4.sp) })
         }
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(10.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             ScrollableTabRow(selectedTabIndex = AppTab.entries.indexOf(tab)) {
                 AppTab.entries.forEach { entry ->
@@ -131,16 +136,19 @@ fun AppScreen(
                     distanceUnit = distanceUnit,
                     chargeSessions = chargeSessions,
                     currencyCode = currencyCode,
-                    onDeleteSession = { session ->
-                        onChargeSessionsChanged(chargeSessions.filterNot { it.id == session.id })
-                    },
-                    onDuplicateSession = onDuplicateSession
+                    onDeleteSession = onDeleteSession,
+                    onDuplicateSession = onDuplicateSession,
+                    onImportSessions = onImportSessions,
+                    onUpdateSession = onUpdateSession,
+                    onClearAllSessions = onClearAllSessions
                 )
 
                 AppTab.SETTINGS -> SettingsScreen(
                     themeMode = themeMode,
+                    appAccentHex = appAccentHex,
                     distanceUnit = distanceUnit,
                     onThemeModeChanged = onThemeModeChanged,
+                    onAppAccentHexChanged = onAppAccentHexChanged,
                     currencyCode = currencyCode,
                     onDistanceUnitChanged = onDistanceUnitChanged,
                     onCurrencyCodeChanged = onCurrencyCodeChanged

@@ -28,6 +28,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
+private val compactFieldModifier = Modifier.heightIn(min = 52.dp)
+
 @Composable
 fun NumberField(
     label: String,
@@ -54,7 +56,7 @@ fun NumberField(
             value = value,
             onValueChange = { raw -> onValueChange(raw.filter { it.isDigit() || it == '.' }) },
             label = { Text(label) },
-            modifier = modifier.fillMaxWidth(),
+            modifier = modifier.fillMaxWidth().then(compactFieldModifier),
             singleLine = true
         )
     }
@@ -97,7 +99,7 @@ fun SelectionDropdown(
                     .background(MaterialTheme.colorScheme.background)
                     .border(1.dp, MaterialTheme.colorScheme.outline, MaterialTheme.shapes.small)
                     .clickable { expanded = true }
-                    .padding(12.dp),
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(selectedText, modifier = Modifier.weight(1f))
@@ -142,7 +144,7 @@ fun SelectionField(title: String, selectedText: String, onClick: () -> Unit) {
                 .background(MaterialTheme.colorScheme.background)
                 .border(1.dp, MaterialTheme.colorScheme.outline, MaterialTheme.shapes.small)
                 .clickable(onClick = onClick)
-                .padding(12.dp),
+                .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(selectedText, modifier = Modifier.weight(1f))
@@ -181,7 +183,7 @@ fun SearchableSelectionDialog(
                     value = query,
                     onValueChange = { query = it },
                     label = { Text("Search currencies") },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().then(compactFieldModifier),
                     singleLine = true
                 )
                 LazyColumn(modifier = Modifier.heightIn(max = 320.dp)) {

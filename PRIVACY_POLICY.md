@@ -4,7 +4,7 @@ Last updated: 2026-04-29
 
 ## Overview
 
-EV Charge Calc is designed for local use. The app stores charging profiles and history only on your device.
+Watt Tracker is designed for local use. The app stores charging profiles and history only on your device.
 
 ## Data We Collect
 
@@ -31,7 +31,7 @@ The app does not sell or share your personal data.
 
 ## Third-Party Services
 
-At this time, EV Charge Calc does not use account systems, backend APIs, or server-side processing for user data.
+At this time, Watt Tracker does not use account systems, backend APIs, or server-side processing for user data.
 
 When you use the Maps action, the app opens OpenStreetMap in your device browser using the charger name/location (and coordinates if available). This request is handled by your browser and OpenStreetMap as a third-party service.
 
@@ -53,6 +53,6 @@ You can remove app data at any time by clearing app storage or uninstalling the 
 
 ## Contact
 
-Developer: Col Dawe  
+Developer: XactDev  
 Support email: TBA  
 Website: TBA

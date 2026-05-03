@@ -8,6 +8,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import androidx.room.withTransaction
 import com.evchargecalc.app.model.ChargeSession
 import com.evchargecalc.app.model.ChargerProfile
+import com.evchargecalc.app.model.DEFAULT_VEHICLE_CHART_COLOR
 import com.evchargecalc.app.model.DistanceUnit
 import com.evchargecalc.app.model.ThemeMode
 import com.evchargecalc.app.model.VehicleProfile
@@ -73,6 +74,14 @@ class AppStorage(context: Context) {
         prefs.edit { it[PreferencesKeys.currencyCode] = code }
     }
 
+    suspend fun loadAppAccentHex(): String {
+        return prefs.data.map { it[PreferencesKeys.appAccentHex] ?: DEFAULT_VEHICLE_CHART_COLOR }.first()
+    }
+
+    suspend fun saveAppAccentHex(hex: String) {
+        prefs.edit { it[PreferencesKeys.appAccentHex] = hex }
+    }
+
     suspend fun loadChargeSessions(): List<ChargeSession> {
         return runCatching { db.chargeSessionDao().getAll() }.getOrDefault(emptyList())
     }
@@ -88,6 +97,14 @@ class AppStorage(context: Context) {
         db.chargeSessionDao().insert(session)
     }
 
+    suspend fun upsertChargeSession(session: ChargeSession) {
+        db.chargeSessionDao().insert(session)
+    }
+
+    suspend fun deleteChargeSession(sessionId: String) {
+        db.chargeSessionDao().deleteById(sessionId)
+    }
+
     suspend fun clearAll() {
         db.withTransaction {
             db.vehicleDao().clearAll()
@@ -101,6 +118,7 @@ class AppStorage(context: Context) {
         val theme = stringPreferencesKey("theme")
         val distanceUnit = stringPreferencesKey("distance_unit")
         val currencyCode = stringPreferencesKey("currency_code")
+        val appAccentHex = stringPreferencesKey("app_accent_hex")
     }
 }
 

@@ -12,8 +12,8 @@ android {
         applicationId = "com.evchargecalc.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 11
-        versionName = "0.5.3"
+        versionCode = 12
+        versionName = "0.6.0-rc1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -67,4 +67,5 @@ dependencies {
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
     androidTestImplementation("androidx.compose.ui:ui-test-junit4:1.6.8")
+    androidTestImplementation("androidx.test.uiautomator:uiautomator:2.3.0")
 }

@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import com.evchargecalc.app.model.allCurrencyOptions
 import com.evchargecalc.app.model.DistanceUnit
 import com.evchargecalc.app.model.ThemeMode
+import com.evchargecalc.app.model.vehicleChartColorOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
 import com.evchargecalc.app.ui.components.SearchableSelectionDialog
 import com.evchargecalc.app.ui.components.SelectionField
@@ -30,9 +31,11 @@ import com.evchargecalc.app.ui.components.TechCard
 @Composable
 fun SettingsScreen(
     themeMode: ThemeMode,
+    appAccentHex: String,
     distanceUnit: DistanceUnit,
     currencyCode: String,
     onThemeModeChanged: (ThemeMode) -> Unit,
+    onAppAccentHexChanged: (String) -> Unit,
     onDistanceUnitChanged: (DistanceUnit) -> Unit,
     onCurrencyCodeChanged: (String) -> Unit
 ) {
@@ -45,7 +48,7 @@ fun SettingsScreen(
         activeContentColor = MaterialTheme.colorScheme.onPrimary
     )
 
-    LazyColumn {
+    LazyColumn(verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(10.dp)) {
         item {
             TechCard(title = "Theme") {
                 Text("Default is DARK. Select a persistent app theme mode:")
@@ -64,15 +67,23 @@ fun SettingsScreen(
                     }
                 }
                 Spacer(Modifier.height(12.dp))
+                SelectionDropdown(
+                    title = "Color Scheme",
+                    selectedText = vehicleChartColorOptions.firstOrNull { it.hex == appAccentHex }?.label
+                        ?: vehicleChartColorOptions.first().label,
+                    options = vehicleChartColorOptions.map { it.hex to it.label },
+                    onSelect = { selected -> if (selected != null) onAppAccentHexChanged(selected) },
+                    includeNoneOption = false
+                )
+                Spacer(Modifier.height(8.dp))
                 Text(
-                    "Minimalist high-tech style with matrix contrast, rounded geometry, and clear mono typography.",
+                    "Applies to the whole app in both light and dark mode while preserving contrast and hierarchy.",
                     style = MaterialTheme.typography.bodySmall
                 )
             }
         }
 
         item {
-            Spacer(Modifier.height(12.dp))
             TechCard(title = "Currency") {
                 SelectionField(
                     title = "Currency",
@@ -87,7 +98,6 @@ fun SettingsScreen(
         }
 
         item {
-            Spacer(Modifier.height(12.dp))
             TechCard(title = "Distance Unit") {
                 Text("Choose the unit used for all range values and calculations:")
                 Spacer(Modifier.height(8.dp))
@@ -108,7 +118,6 @@ fun SettingsScreen(
         }
 
         item {
-            Spacer(Modifier.height(12.dp))
             TechCard(title = "About") {
                 Text("View app details, version info, and support links.")
                 Spacer(Modifier.height(8.dp))
@@ -120,7 +129,6 @@ fun SettingsScreen(
 
         if (showAbout) {
             item {
-                Spacer(Modifier.height(12.dp))
                 AboutScreen()
             }
         }

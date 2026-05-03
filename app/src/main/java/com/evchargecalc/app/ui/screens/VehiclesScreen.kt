@@ -107,7 +107,7 @@ fun VehiclesScreen(
         }
     }
 
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item {
             TechCard(title = if (editingId == null) "Add Vehicle" else "Edit Vehicle") {
                 SelectionDropdown(

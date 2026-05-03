@@ -1,5 +1,7 @@
 package com.evchargecalc.app.ui.screens
 
+import android.app.DatePickerDialog
+import android.app.TimePickerDialog
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
@@ -17,6 +19,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -25,6 +28,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -65,6 +69,8 @@ import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.Date
 import java.util.Locale
+import java.util.UUID
+import java.util.Calendar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -99,12 +105,25 @@ private data class ChartModel(
     val xAxisTitle: String
 )
 
+private data class HistoryImportResult(
+    val sessions: List<ChargeSession>,
+    val skippedRows: Int
+)
+
 private enum class BucketResolution { DAY, MONTH, YEAR }
 
 private fun formatSessionDate(timestampMs: Long): String {
     val formatter = SimpleDateFormat("dd-MM-yy", Locale.getDefault())
     return formatter.format(Date(timestampMs))
 }
+
+private fun formatSessionDateTimeInput(timestampMs: Long): String {
+    val formatter = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+    return formatter.format(Date(timestampMs))
+}
+
+private fun calendarFromTimestamp(timestampMs: Long): Calendar =
+    Calendar.getInstance().apply { timeInMillis = timestampMs }
 
 private fun historyMetricLabel(metric: ChartMetric, currencyCode: String): String {
     return when (metric) {
@@ -299,6 +318,165 @@ private fun csvEscape(value: String): String {
     return "\"$escaped\""
 }
 
+private fun parseCsvTable(content: String): List<List<String>> {
+    val rows = mutableListOf<List<String>>()
+    val row = mutableListOf<String>()
+    val cell = StringBuilder()
+    var inQuotes = false
+    var i = 0
+
+    while (i < content.length) {
+        val ch = content[i]
+        when {
+            ch == '"' -> {
+                if (inQuotes && i + 1 < content.length && content[i + 1] == '"') {
+                    cell.append('"')
+                    i++
+                } else {
+                    inQuotes = !inQuotes
+                }
+            }
+
+            ch == ',' && !inQuotes -> {
+                row.add(cell.toString())
+                cell.setLength(0)
+            }
+
+            (ch == '\n' || ch == '\r') && !inQuotes -> {
+                if (ch == '\r' && i + 1 < content.length && content[i + 1] == '\n') {
+                    i++
+                }
+                row.add(cell.toString())
+                cell.setLength(0)
+                if (row.any { it.isNotBlank() } || row.size > 1) {
+                    rows.add(row.toList())
+                }
+                row.clear()
+            }
+
+            else -> cell.append(ch)
+        }
+        i++
+    }
+
+    if (cell.isNotEmpty() || row.isNotEmpty()) {
+        row.add(cell.toString())
+        if (row.any { it.isNotBlank() } || row.size > 1) {
+            rows.add(row.toList())
+        }
+    }
+
+    return rows
+}
+
+private fun stableImportedId(prefix: String, seed: String): String {
+    val uuid = UUID.nameUUIDFromBytes(seed.lowercase(Locale.ROOT).toByteArray())
+    return "$prefix-$uuid"
+}
+
+private fun matchedVehicleId(vehicleName: String, vehicles: List<VehicleProfile>): String? {
+    val name = vehicleName.trim()
+    return vehicles.firstOrNull {
+        "${it.make} ${it.model}".equals(name, ignoreCase = true)
+    }?.id
+}
+
+private fun matchedChargerId(
+    chargerName: String,
+    location: String,
+    chargers: List<ChargerProfile>
+): String? {
+    val name = chargerName.trim()
+    val loc = location.trim()
+    return chargers.firstOrNull {
+        it.name.equals(name, ignoreCase = true) && it.location.equals(loc, ignoreCase = true)
+    }?.id ?: chargers.firstOrNull {
+        it.name.equals(name, ignoreCase = true)
+    }?.id
+}
+
+private fun parseHistoryCsv(
+    content: String,
+    vehicles: List<VehicleProfile>,
+    chargers: List<ChargerProfile>,
+    fallbackCurrencyCode: String
+): HistoryImportResult {
+    val rows = parseCsvTable(content)
+    if (rows.isEmpty()) return HistoryImportResult(emptyList(), 0)
+
+    val header = rows.first().map { it.replace("\uFEFF", "").trim().lowercase(Locale.ROOT) }
+    val indexByName = header.withIndex().associate { it.value to it.index }
+
+    fun value(row: List<String>, name: String): String {
+        val idx = indexByName[name] ?: return ""
+        return row.getOrNull(idx)?.trim().orEmpty()
+    }
+
+    val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).apply {
+        isLenient = false
+    }
+
+    val sessions = mutableListOf<ChargeSession>()
+    var skippedRows = 0
+
+    rows.drop(1).forEach { row ->
+        if (row.all { it.isBlank() }) return@forEach
+
+        val id = value(row, "id").ifBlank { UUID.randomUUID().toString() }
+        val timestampMs = value(row, "timestamp_ms").toLongOrNull()
+            ?: runCatching { dateFormat.parse(value(row, "date_local"))?.time }.getOrNull()
+        val vehicleName = value(row, "vehicle")
+        val chargerName = value(row, "charger")
+        val location = value(row, "location")
+        val network = value(row, "network")
+        val sessionTag = value(row, "tag").ifBlank { chargeSessionTagOptions.first() }
+        val energyKwh = value(row, "energy_kwh").toDoubleOrNull()
+        val timeHours = value(row, "time_h").toDoubleOrNull()
+        val costAmount = value(row, "cost").toDoubleOrNull()
+        val currencyCode = value(row, "currency").ifBlank { fallbackCurrencyCode }
+        val notes = value(row, "notes")
+        val distanceKm = value(row, "distance_km").toDoubleOrNull()
+
+        if (
+            timestampMs == null ||
+            vehicleName.isBlank() ||
+            chargerName.isBlank() ||
+            location.isBlank() ||
+            energyKwh == null ||
+            timeHours == null ||
+            costAmount == null
+        ) {
+            skippedRows++
+            return@forEach
+        }
+
+        val vehicleId = matchedVehicleId(vehicleName, vehicles)
+            ?: stableImportedId("imported-vehicle", vehicleName)
+        val chargerId = matchedChargerId(chargerName, location, chargers)
+            ?: stableImportedId("imported-charger", "$chargerName|$location")
+
+        sessions += ChargeSession(
+            id = id,
+            timestampMs = timestampMs,
+            vehicleId = vehicleId,
+            vehicleName = vehicleName,
+            chargerId = chargerId,
+            chargerName = chargerName,
+            chargerLocation = location,
+            chargerNetwork = network,
+            energyKwh = energyKwh,
+            timeHours = timeHours,
+            costAmount = costAmount,
+            currencyCode = currencyCode,
+            sessionTag = sessionTag,
+            notes = notes,
+            distanceDrivenKm = distanceKm
+        )
+    }
+
+    return HistoryImportResult(sessions = sessions, skippedRows = skippedRows)
+}
+
 private fun csvNumber(value: Double): String = String.format(Locale.US, "%.6f", value)
 
 private fun estimateNetworkName(session: ChargeSession, chargers: List<ChargerProfile>): String {
@@ -393,7 +571,10 @@ fun HistoryScreen(
     distanceUnit: DistanceUnit,
     currencyCode: String,
     onDeleteSession: (ChargeSession) -> Unit = {},
-    onDuplicateSession: (ChargeSession) -> Unit = {}
+    onDuplicateSession: (ChargeSession) -> Unit = {},
+    onImportSessions: (List<ChargeSession>) -> Unit = {},
+    onUpdateSession: (ChargeSession) -> Unit = {},
+    onClearAllSessions: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -404,6 +585,9 @@ fun HistoryScreen(
     var typeFilter by remember { mutableStateOf(ALL_TAGS) }
     var exportNotice by remember { mutableStateOf<String?>(null) }
     var pendingCsvContent by remember { mutableStateOf("") }
+    var dateEditSession by remember { mutableStateOf<ChargeSession?>(null) }
+    var duplicateMode by remember { mutableStateOf(false) }
+    var showClearAllConfirm by remember { mutableStateOf(false) }
     val segmentedColors = SegmentedButtonDefaults.colors(
         activeContainerColor = MaterialTheme.colorScheme.primary,
         activeContentColor = MaterialTheme.colorScheme.onPrimary
@@ -425,6 +609,45 @@ fun HistoryScreen(
                 exportNotice = "CSV export saved."
             }.onFailure {
                 exportNotice = "CSV export failed."
+            }
+        }
+    }
+
+    val importLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri == null) {
+            exportNotice = "Import cancelled."
+        } else {
+            exportNotice = "Importing CSV..."
+            scope.launch {
+                val result = withContext(Dispatchers.IO) {
+                    runCatching {
+                        context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { reader ->
+                            parseHistoryCsv(
+                                content = reader.readText(),
+                                vehicles = vehicles,
+                                chargers = chargers,
+                                fallbackCurrencyCode = currencyCode
+                            )
+                        } ?: HistoryImportResult(emptyList(), 0)
+                    }.getOrElse { HistoryImportResult(emptyList(), 0) }
+                }
+
+                if (result.sessions.isNotEmpty()) {
+                    onImportSessions(result.sessions)
+                    exportNotice = if (result.skippedRows > 0) {
+                        "Imported ${result.sessions.size} sessions (${result.skippedRows} rows skipped)."
+                    } else {
+                        "Imported ${result.sessions.size} sessions."
+                    }
+                } else {
+                    exportNotice = if (result.skippedRows > 0) {
+                        "Import failed: all rows were invalid (${result.skippedRows} skipped)."
+                    } else {
+                        "Import failed: no valid sessions found."
+                    }
+                }
             }
         }
     }
@@ -517,7 +740,45 @@ fun HistoryScreen(
         }
     }
 
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    if (dateEditSession != null) {
+        SessionDateEditorDialog(
+            source = dateEditSession!!,
+            duplicateMode = duplicateMode,
+            onDismiss = { dateEditSession = null },
+            onApply = { adjustedTimestampMs ->
+                val source = dateEditSession ?: return@SessionDateEditorDialog
+                if (duplicateMode) {
+                    onDuplicateSession(
+                        source.copy(
+                            id = UUID.randomUUID().toString(),
+                            timestampMs = adjustedTimestampMs
+                        )
+                    )
+                } else {
+                    onUpdateSession(source.copy(timestampMs = adjustedTimestampMs))
+                }
+                dateEditSession = null
+            }
+        )
+    }
+
+    if (showClearAllConfirm) {
+        ConfirmationDialog(
+            title = "Clear All History?",
+            message = "Remove all saved charge sessions? This action cannot be undone.",
+            confirmText = "Clear All",
+            dismissText = "Cancel",
+            isDestructive = true,
+            onConfirm = {
+                onClearAllSessions()
+                showClearAllConfirm = false
+                exportNotice = "History cleared."
+            },
+            onDismiss = { showClearAllConfirm = false }
+        )
+    }
+
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item {
             TechCard(title = "History Filters") {
                 Text("Period")
@@ -578,6 +839,15 @@ fun HistoryScreen(
                     onSelect = { selected -> typeFilter = selected ?: ALL_TAGS },
                     includeNoneOption = false
                 )
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    Button(
+                        onClick = { importLauncher.launch(arrayOf("text/*", "text/csv", "application/csv")) },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Import CSV")
+                    }
+                }
             }
         }
 
@@ -602,7 +872,10 @@ fun HistoryScreen(
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Button(
-                                    onClick = { onDuplicateSession(lastSession) },
+                                    onClick = {
+                                        duplicateMode = true
+                                        dateEditSession = lastSession
+                                    },
                                     modifier = Modifier.weight(1f)
                                 ) {
                                     Text("Duplicate")
@@ -626,13 +899,13 @@ fun HistoryScreen(
                                     Text("Export CSV")
                                 }
                                 Button(
-                                    onClick = { deleteConfirmSessionId = lastSession.id },
+                                    onClick = { showClearAllConfirm = true },
                                     modifier = Modifier.weight(1f),
                                     colors = ButtonDefaults.buttonColors(
                                         containerColor = MaterialTheme.colorScheme.secondary
                                     )
                                 ) {
-                                    Text("Clear")
+                                    Text("Clear All")
                                 }
                             }
                             if (exportNotice != null) {
@@ -793,10 +1066,25 @@ fun HistoryScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Button(
-                            onClick = { onDuplicateSession(item) },
+                            onClick = {
+                                duplicateMode = true
+                                dateEditSession = item
+                            },
                             modifier = Modifier.weight(1f)
                         ) {
                             Text("Duplicate")
+                        }
+                        Button(
+                            onClick = {
+                                duplicateMode = false
+                                dateEditSession = item
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Edit,
+                                contentDescription = "Edit session date"
+                            )
                         }
                         Button(
                             onClick = {
@@ -829,6 +1117,88 @@ fun HistoryScreen(
             }
         }
     }
+}
+
+@Composable
+private fun SessionDateEditorDialog(
+    source: ChargeSession,
+    duplicateMode: Boolean,
+    onDismiss: () -> Unit,
+    onApply: (Long) -> Unit
+) {
+    val context = LocalContext.current
+    var selectedTimestampMs by remember(source.id, duplicateMode) {
+        mutableStateOf(source.timestampMs)
+    }
+
+    val pickerValue = formatSessionDateTimeInput(selectedTimestampMs)
+    val validationMessage = when {
+        selectedTimestampMs > System.currentTimeMillis() + 365L * 24 * 60 * 60 * 1000 -> "Date is too far in the future."
+        selectedTimestampMs < 0L -> "Date must be valid."
+        else -> null
+    }
+
+    fun openDateTimePickers() {
+        val initial = calendarFromTimestamp(selectedTimestampMs)
+        DatePickerDialog(
+            context,
+            { _, year, month, dayOfMonth ->
+                val pickedDate = Calendar.getInstance().apply {
+                    set(Calendar.YEAR, year)
+                    set(Calendar.MONTH, month)
+                    set(Calendar.DAY_OF_MONTH, dayOfMonth)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }
+                TimePickerDialog(
+                    context,
+                    { _, hourOfDay, minute ->
+                        pickedDate.set(Calendar.HOUR_OF_DAY, hourOfDay)
+                        pickedDate.set(Calendar.MINUTE, minute)
+                        selectedTimestampMs = pickedDate.timeInMillis
+                    },
+                    initial.get(Calendar.HOUR_OF_DAY),
+                    initial.get(Calendar.MINUTE),
+                    true
+                ).show()
+            },
+            initial.get(Calendar.YEAR),
+            initial.get(Calendar.MONTH),
+            initial.get(Calendar.DAY_OF_MONTH)
+        ).show()
+    }
+
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (duplicateMode) "Duplicate With Adjusted Date" else "Edit Session Date") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Adjust the timestamp to correct historical records.")
+                Text("Selected: $pickerValue")
+                Button(onClick = { openDateTimePickers() }, modifier = Modifier.fillMaxWidth()) {
+                    Text("Pick Date and Time")
+                }
+                if (validationMessage != null) {
+                    Text(
+                        validationMessage,
+                        color = MaterialTheme.colorScheme.secondary,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onApply(selectedTimestampMs) },
+                enabled = validationMessage == null
+            ) {
+                Text(if (duplicateMode) "Duplicate" else "Save")
+            }
+        }
+    )
 }
 
 @Composable

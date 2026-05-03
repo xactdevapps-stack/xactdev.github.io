@@ -4,11 +4,11 @@ Last updated: 2026-04-29
 
 ## Acceptance
 
-By using EV Charge Calc, you agree to these Terms and Conditions.
+By using Watt Tracker, you agree to these Terms and Conditions.
 
 ## Purpose of the App
 
-EV Charge Calc provides estimated EV charging outputs for general interest and planning convenience only.
+Watt Tracker provides estimated EV charging outputs for general interest and planning convenience only.
 
 ## Important Disclaimer (Read Carefully)
 
@@ -55,7 +55,7 @@ Map data attribution: © OpenStreetMap contributors.
 
 ## Limitation of Liability
 
-To the maximum extent permitted by law, EV Charge Calc and its developer are not liable for any loss, damage, or claim arising from use of the app or reliance on its estimated outputs.
+To the maximum extent permitted by law, Watt Tracker and its developer are not liable for any loss, damage, or claim arising from use of the app or reliance on its estimated outputs.
 
 ## Changes to These Terms
 
@@ -63,6 +63,6 @@ These terms may be updated over time. Continued use of the app after changes mea
 
 ## Contact
 
-Developer: Col Dawe  
+Developer: XactDev  
 Support email: TBA  
 Website: TBA
