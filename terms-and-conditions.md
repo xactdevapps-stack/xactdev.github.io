@@ -65,4 +65,4 @@ These terms may be updated over time. Continued use of the app after changes mea
 
 Developer: XactDev  
 Support email: xactdev.apps@gmail.com  
-Website: TBA
+Website: https://xactdevapps-stack.github.io/xactdev.github.io/

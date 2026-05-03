@@ -55,4 +55,4 @@ You can remove app data at any time by clearing app storage or uninstalling the 
 
 Developer: XactDev  
 Support email: xactdev.apps@gmail.com  
-Website: TBA
+Website: https://xactdevapps-stack.github.io/xactdev.github.io/
